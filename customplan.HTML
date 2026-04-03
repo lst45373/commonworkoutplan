@@ -446,7 +446,7 @@
     // 3. CORE LOGIC
     // ==========================================
     const round2_5 = n => Math.round(n / 2.5) * 2.5;
-    const e1rm = (w, r) => r > 1 ? w * (1 + r / 30) : w;
+    const e1rm = (w, r) => r > 1 ? w * (1 + Math.min(r, 12) / 30) : w;
 
     function getPhaseInfo(week, cycle) {
         if (week === 13) return { phase: "디로딩", type: "A" };
@@ -896,10 +896,20 @@
     // --- Timer Logic (Smart Countdown) ---
     let timerInt;
     
-    function checkTimer(tplId, input) {
+function checkTimer(tplId, input) {
         const row = input.parentElement;
+        const container = row.parentElement;
+        const isLastRow = container.lastElementChild === row; 
+        
         const w = row.querySelector('.input-w').value;
         if(input.value && w) {
+            const tpl = TEMPLATES[tplId];
+            const maxSetsMatch = tpl.sets.match(/\d+(?:-)?(\d+)?세트/);
+            const targetSets = maxSetsMatch ? parseInt(maxSetsMatch[1] || maxSetsMatch[0]) : 4;
+            
+            const currentRowCount = Array.from(container.children).indexOf(row) + 1;
+            if (currentRowCount >= targetSets && isLastRow) return; 
+            
             startTimer(tplId);
         }
     }
