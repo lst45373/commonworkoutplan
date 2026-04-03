@@ -591,9 +591,17 @@
         const lastRec = sortedHistory[sortedHistory.length-1];
         const lastSet = lastRec ? lastRec.sets[lastRec.sets.length-1] : null;
         
-        const baseVal = isLbs ? tpl.progression.base * 2.2 : tpl.progression.base;
+const baseVal = isLbs ? tpl.progression.base * 2.2 : tpl.progression.base;
         
-        if (lastSet && lastSet.r >= 12 && Number(lastSet.w) >= baseVal) {
+        // 1. 타겟 횟수에서 최대 횟수를 동적으로 파싱 (예: "15-20회" -> 20, "12회" -> 12)
+        let maxTargetReps = 12; // 기본값
+        const repsMatch = targetReps.match(/(\d+)\s*(?:-|~)?\s*(\d+)?/);
+        if (repsMatch) {
+            maxTargetReps = parseInt(repsMatch[2] || repsMatch[1]);
+        }
+
+        // 2. 동적으로 파싱된 최대 횟수(maxTargetReps)를 증량 기준으로 사용
+        if (lastSet && Number(lastSet.r) >= maxTargetReps && Number(lastSet.w) >= baseVal) {
             const inc = isLbs ? 5 : 2.5;
             return `🔥 증량 도전: ${Number(lastSet.w) + inc}${unitText} (${targetSets})`;
         }
