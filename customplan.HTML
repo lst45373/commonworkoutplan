@@ -226,37 +226,23 @@
                 </div>
 
                 <!-- Unit Selector -->
-<div class="flex gap-4">
-                    <div class="flex-1">
-                        <label class="block text-sm font-bold text-slate-900 mb-2">단위 (Unit)</label>
-                        <div class="flex gap-2">
-                            <label class="flex-1 relative cursor-pointer">
-                                <input type="radio" name="custom-unit" value="kg" class="peer sr-only" checked>
-                                <div class="p-2.5 text-center rounded-xl border border-slate-200 bg-white text-slate-600 font-bold peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-all text-sm">KG</div>
-                            </label>
-                            <label class="flex-1 relative cursor-pointer">
-                                <input type="radio" name="custom-unit" value="lbs" class="peer sr-only">
-                                <div class="p-2.5 text-center rounded-xl border border-slate-200 bg-white text-slate-600 font-bold peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-all text-sm">LBS</div>
-                            </label>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-900 mb-2">덤벨 설정</label>
-                        <label class="flex items-center gap-2 cursor-pointer p-2.5 border border-slate-200 rounded-xl bg-white hover:bg-slate-50">
-                            <input type="checkbox" id="custom-dumbbell-check" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm font-bold text-slate-700">2kg 단위</span>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">단위 (Unit)</label>
+                    <div class="flex gap-2">
+                        <label class="flex-1 relative cursor-pointer">
+                            <input type="radio" name="custom-unit" value="kg" class="peer sr-only" checked>
+                            <div class="p-3 text-center rounded-xl border border-slate-200 bg-white text-slate-600 font-bold peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-all">KG</div>
+                        </label>
+                        <label class="flex-1 relative cursor-pointer">
+                            <input type="radio" name="custom-unit" value="lbs" class="peer sr-only">
+                            <div class="p-3 text-center rounded-xl border border-slate-200 bg-white text-slate-600 font-bold peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-all">LBS</div>
                         </label>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-slate-900 mb-2">타겟 부위 변경</label>
-                    <input type="text" id="custom-target-input" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm placeholder-slate-400" placeholder="기본 타겟 표시">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-bold text-slate-900 mb-2">운동 팁 & 메모</label>
-                    <textarea id="custom-tip-input" rows="3" class="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm placeholder-slate-400" placeholder="자신만의 자극 포인트나 세팅 방법을 적어보세요."></textarea>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">메모 (세팅값 등)</label>
+                    <textarea id="custom-note-input" rows="2" class="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm placeholder-slate-400" placeholder="예: 의자 높이 3칸, 언더그립"></textarea>
                 </div>
 
                 <button onclick="saveCustomization()" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-transform active:scale-95">설정 저장하기</button>
@@ -496,21 +482,17 @@
         return 90;
     }
 
-function calculateGoal(tplId) {
+    function calculateGoal(tplId) {
         const tpl = TEMPLATES[tplId];
         const { phase } = getPhaseInfo(state.week, state.cycle);
         const history = state.records[tplId] || [];
         const custom = state.customs[tplId] || {};
         const isLbs = custom.unit === 'lbs';
-        const isDumbbell = custom.isDumbbell; 
         
         const fmtW = (kgVal) => isLbs ? Math.round(kgVal * 2.20462) : kgVal;
         const unitText = isLbs ? 'lbs' : 'kg';
 
-        // 증량 단위 셋업 (덤벨 체크 시 2kg 단위, 일반은 2.5kg 단위)
-        const step = isLbs ? 5 : (isDumbbell ? 2 : 2.5);
-        const roundStep = (n, s) => Math.round(n / s) * s;
-
+        // ---- Filter history to exclude CURRENT week records for goal calculation ----
         const validHistory = history.filter(r => {
             if (r.cycle < state.cycle) return true;
             if (r.cycle === state.cycle && r.week < state.week) return true;
@@ -521,7 +503,9 @@ function calculateGoal(tplId) {
         const targetSets = tpl.sets || "3-4세트";
 
         if (tpl.type === 'WARMUP') {
+             // If history exists, use last warmup weight
              if (validHistory.length > 0) {
+                 // Sort by date to find the very last session
                  const sortedHistory = [...validHistory].sort((a,b) => new Date(a.date) - new Date(b.date));
                  const lastRec = sortedHistory[sortedHistory.length - 1];
                  if (lastRec && lastRec.sets.length > 0) {
@@ -542,6 +526,7 @@ function calculateGoal(tplId) {
             if (phase === "디로딩") return "회복: 평소 워킹 중량의 50% (자세 집중)";
 
             let peak = 0;
+            // Scan valid history for peak
             validHistory.forEach(rec => rec.sets.forEach(s => {
                 const e = e1rm(Number(s.w), Number(s.r));
                 if (e > peak) peak = e;
@@ -554,14 +539,18 @@ function calculateGoal(tplId) {
 
             if (phase === "축적 주기") {
                 let target = peak * 0.7;
-                target = roundStep(target, step); // 2kg or 2.5kg 반올림
+                // Rounding for accumulation (2.5kg or 5lbs step)
+                if (isLbs) target = Math.round(target / 5) * 5;
+                else target = round2_5(target);
+                
                 return `🔥 축적 목표: ${target}${unitText} x 8-12회 (3-4세트)`;
             }
 
             const lastStrength = validHistory.filter(r => r.phase === "강화 주기").sort((a,b) => new Date(b.date) - new Date(a.date))[0];
             if (!lastStrength) {
                 let startW = peak * 0.9;
-                startW = roundStep(startW, step);
+                if(isLbs) startW = Math.round(startW / 5) * 5;
+                else startW = round2_5(startW);
                 return `🔥 강화 목표: 탑 세트 ${startW}${unitText} x AMRAP`;
             }
 
@@ -583,21 +572,24 @@ function calculateGoal(tplId) {
             const nextE1rm = best.e * mult;
             let nextW = nextE1rm / 1.2;
             
-            nextW = roundStep(nextW, step);
+            if(isLbs) nextW = Math.round(nextW / 5) * 5; 
+            else nextW = round2_5(nextW);
 
-            if (mult > 1.0 && nextW <= best.w) nextW = best.w + step;
+            if (mult > 1.0 && nextW <= best.w) nextW = best.w + (isLbs ? 5 : 2.5);
 
-            const backoff = roundStep(nextW * 0.8, step);
+            const backoff = isLbs ? Math.round(nextW * 0.8 / 5) * 5 : round2_5(nextW * 0.8);
             return `🔥 강화: Top 1세트(${nextW}${unitText}) / Back-off 2세트(${backoff}${unitText})`;
         }
 
+// Sub/Finish Logic
         const sortedHistory = [...validHistory].sort((a,b) => new Date(a.date) - new Date(b.date));
         const lastRec = sortedHistory[sortedHistory.length-1];
         const lastSet = lastRec ? lastRec.sets[lastRec.sets.length-1] : null;
 
         if (phase === "디로딩") {
             if (lastSet && Number(lastSet.w) > 0) {
-                const halfW = roundStep(Number(lastSet.w) * 0.5, step);
+                // 과거 기록의 50% 무게를 계산 (2.5kg 단위로 반올림)
+                const halfW = isLbs ? Math.round((Number(lastSet.w) * 0.5) / 5) * 5 : Math.round((Number(lastSet.w) * 0.5) / 2.5) * 2.5;
                 return `🌿 디로딩 목표: ${halfW}${unitText} x ${targetReps} (1~2세트)`;
             }
             return `🌿 디로딩: 평소 중량의 50% x ${targetReps} (1~2세트)`;
@@ -609,14 +601,18 @@ function calculateGoal(tplId) {
         }
         
         const baseVal = isLbs ? tpl.progression.base * 2.2 : tpl.progression.base;
-        let maxTargetReps = 12; 
+        
+        // 1. 타겟 횟수에서 최대 횟수를 동적으로 파싱 (예: "15-20회" -> 20, "12회" -> 12)
+        let maxTargetReps = 12; // 기본값
         const repsMatch = targetReps.match(/(\d+)\s*(?:-|~)?\s*(\d+)?/);
         if (repsMatch) {
             maxTargetReps = parseInt(repsMatch[2] || repsMatch[1]);
         }
 
+        // 2. 동적으로 파싱된 최대 횟수(maxTargetReps)를 증량 기준으로 사용
         if (lastSet && Number(lastSet.r) >= maxTargetReps && Number(lastSet.w) >= baseVal) {
-            return `🔥 증량 도전: ${Number(lastSet.w) + step}${unitText} x ${targetReps} (${targetSets})`;
+            const inc = isLbs ? 5 : 2.5;
+            return `🔥 증량 도전: ${Number(lastSet.w) + inc}${unitText} x ${targetReps} (${targetSets})`;
         }
         if (lastSet) {
              return `🔥 유지 목표: ${lastSet.w}${unitText} x ${targetReps} (${targetSets})`;
@@ -744,9 +740,10 @@ function calculateGoal(tplId) {
                 <div class="bg-slate-50 p-3 rounded-xl mb-4 text-sm border border-slate-100">
                     <div class="flex gap-2 mb-1">
                         <span class="text-xs font-bold text-slate-500 whitespace-nowrap">🎯 타겟</span>
-                        <span class="text-xs text-slate-700">${custom.customTarget || tpl.cue.primary}</span>
+                        <span class="text-xs text-slate-700">${tpl.cue.primary}</span>
                     </div>
-                    <p class="text-xs text-slate-500 leading-relaxed mb-2">${custom.note ? custom.note.replace(/\n/g, '<br>') : tpl.cue.tip}</p>
+                    <p class="text-xs text-slate-500 leading-relaxed mb-2">${tpl.cue.tip}</p>
+                    ${custom.note ? `<p class="text-xs text-amber-600 font-medium border-t border-slate-200 pt-1">📝 ${custom.note}</p>` : ''}
                     <div class="mt-2 pt-2 border-t border-slate-200 font-bold text-blue-600 text-sm flex items-center gap-1">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                         ${goalText}
@@ -821,26 +818,17 @@ function calculateGoal(tplId) {
     const guideEl = document.getElementById('guide-modal');
     const guidePanel = document.getElementById('guide-panel');
 
-function openModal(id) {
+    function openModal(id) {
         editingId = id;
         const tpl = TEMPLATES[id];
         const custom = state.customs[id] || {};
         document.getElementById('modal-tpl-name').textContent = tpl.defaultName;
-        
         const nameInput = document.getElementById('custom-name-input');
         nameInput.value = custom.name || '';
         nameInput.placeholder = tpl.example || "예: 커스텀 운동 이름";
-        
+        document.getElementById('custom-note-input').value = custom.note || '';
         const unit = custom.unit || 'kg';
         document.querySelector(`input[name="custom-unit"][value="${unit}"]`).checked = true;
-        
-        // 새로 추가된 덤벨/타겟 불러오기, 팁은 기존 note 데이터 연동
-        document.getElementById('custom-dumbbell-check').checked = !!custom.isDumbbell;
-        document.getElementById('custom-target-input').value = custom.customTarget || '';
-        document.getElementById('custom-target-input').placeholder = tpl.cue.primary;
-        document.getElementById('custom-tip-input').value = custom.note || '';
-        document.getElementById('custom-tip-input').placeholder = tpl.cue.tip;
-
         modalEl.classList.remove('invisible', 'opacity-0');
         modalPanel.classList.remove('translate-y-full');
     }
@@ -853,18 +841,10 @@ function openModal(id) {
     function saveCustomization() {
         if(!editingId) return;
         const name = document.getElementById('custom-name-input').value;
+        const note = document.getElementById('custom-note-input').value;
         const unit = document.querySelector('input[name="custom-unit"]:checked').value;
-        
-        // 새로 추가된 덤벨/타겟 저장, 팁은 기존 note 이름으로 저장
-        const isDumbbell = document.getElementById('custom-dumbbell-check').checked;
-        const customTarget = document.getElementById('custom-target-input').value;
-        const note = document.getElementById('custom-tip-input').value;
-
-        if(name || unit !== 'kg' || isDumbbell || customTarget || note) {
-            state.customs[editingId] = { name, unit, isDumbbell, customTarget, note };
-        } else {
-            delete state.customs[editingId];
-        }
+        if(name || note || unit !== 'kg') state.customs[editingId] = { name, note, unit };
+        else delete state.customs[editingId];
         saveData();
         render();
         closeModal();
