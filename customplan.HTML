@@ -394,20 +394,26 @@
         }
     }
 
-    function playBeep() {
+    function playBeep(duration = 1.0) {
         if (!audioCtx) return;
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        // 변경점 1: 부드러운 sine파 대신 헬스장 소음을 뚫는 날카로운 square파로 변경
+        oscillator.type = 'square'; 
+        
+        // 주파수는 880Hz (약간 높은 '라' 음) 유지
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+        
+        // 변경점 2: 볼륨 증가 (0.1 -> 0.8) 최대 1.0까지 가능하지만 0.8 정도가 적당합니다.
+        gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime);
         
         oscillator.start();
-        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-        oscillator.stop(audioCtx.currentTime + 0.5);
+        // 변경점 3: 소리가 줄어들며 끝나는 시간을 0.5초에서 duration(기본 1초)으로 연장
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+        oscillator.stop(audioCtx.currentTime + duration);
     }
 
     // Re-acquire lock on visibility change
