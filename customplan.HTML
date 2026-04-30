@@ -798,15 +798,16 @@ function removeSet(btn, tplId) {
     btn.parentElement.remove();
     saveRecord(tplId);
     
-    // 🔥 세트 삭제 시에도 스크롤 튕김 방지
-    const mainContent = document.getElementById('main-content');
-    const scrollPos = mainContent.scrollTop;
+    // 🔥 세트 삭제 시에도 동일하게 전체 창 스크롤 방어 적용
+    const scrollPos = window.scrollY || document.documentElement.scrollTop;
+    document.body.style.minHeight = document.body.scrollHeight + 'px';
     
     render();
     
-    requestAnimationFrame(() => {
-        mainContent.scrollTop = scrollPos;
-    });
+    setTimeout(() => {
+        window.scrollTo(0, scrollPos);
+        document.body.style.minHeight = '';
+    }, 10);
 }
     function saveRecord(tplId) {
         const rows = document.getElementById(`sets-${tplId}`).children;
@@ -867,16 +868,17 @@ function saveCustomization() {
     else delete state.customs[editingId];
     saveData();
     
-    // 🔥 스크롤 위치 저장
-    const mainContent = document.getElementById('main-content');
-    const scrollPos = mainContent.scrollTop; 
+    // 🔥 1. 실제 스크롤되는 전체 창의 위치를 기억하고, 화면 높이가 찌그러지지 않게 임시 고정
+    const scrollPos = window.scrollY || document.documentElement.scrollTop;
+    document.body.style.minHeight = document.body.scrollHeight + 'px';
     
     render();
     
-    // 🔥 DOM 업데이트 후 스크롤 위치 복원
-    requestAnimationFrame(() => {
-        mainContent.scrollTop = scrollPos;
-    });
+    // 🔥 2. 화면이 다 그려진 직후에 스크롤을 제자리로 돌려놓고, 임시 높이 고정 해제
+    setTimeout(() => {
+        window.scrollTo(0, scrollPos);
+        document.body.style.minHeight = '';
+    }, 10);
     
     closeModal();
 }
