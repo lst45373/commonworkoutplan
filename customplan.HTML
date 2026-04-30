@@ -423,9 +423,19 @@
         }
     });
 
-    // Init features on first interaction
+// Init features on first interaction
     function initFeatures() {
         initAudio();
+        
+        // 🔥 아이폰 무음 버그 해결: 첫 터치 시 볼륨 0으로 소리를 한 번 재생해 오디오 권한 획득
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = 0;
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+
         acquireWakeLock();
         document.removeEventListener('click', initFeatures);
         document.removeEventListener('touchstart', initFeatures);
@@ -452,7 +462,11 @@
     // 3. CORE LOGIC
     // ==========================================
     const round2_5 = n => Math.round(n / 2.5) * 2.5;
-    const e1rm = (w, r) => r > 1 ? w * (1 + Math.min(r, 12) / 30) : w;
+    const e1rm = (w, r) => {
+        const weight = Number(w) || 0;
+        const reps = Number(r) || 0;
+        return reps > 1 ? weight * (1 + Math.min(reps, 12) / 30) : weight;
+    };
 
     function getPhaseInfo(week, cycle) {
         if (week === 13) return { phase: "디로딩", type: "A" };
@@ -629,6 +643,8 @@
     // ==========================================
     // 4. UI RENDERING
     // ==========================================
+let lastScrolledWeek = null; // 스크롤 상태를 기억하는 변수 추가
+
     function renderWeekScroller() {
         const el = document.getElementById('week-scroller');
         
@@ -650,17 +666,17 @@
             const isActive = weekNum === state.week;
             btn.className = `flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-200 scale-105' : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'}`;
             
-if (isActive) {
-    // 🔥 세로 스크롤 간섭을 막기 위해 가로 스크롤만 이동하도록 변경
-    const scroller = document.getElementById('week-scroller');
-    scroller.scrollTo({
-        left: btn.offsetLeft - scroller.offsetWidth / 2 + btn.offsetWidth / 2,
-        behavior: 'smooth'
-    });
-}
+            // 🔥 주차가 실제로 변경되었을 때만 스크롤 이동하도록 수정
+            if (isActive && lastScrolledWeek !== state.week) {
+                const scroller = document.getElementById('week-scroller');
+                scroller.scrollTo({
+                    left: btn.offsetLeft - scroller.offsetWidth / 2 + btn.offsetWidth / 2,
+                    behavior: 'smooth'
+                });
+                lastScrolledWeek = state.week;
+            }
         });
     }
-    
     function scrollWeeks(direction) {
         const el = document.getElementById('week-scroller');
         const scrollAmount = 150; 
