@@ -650,9 +650,14 @@
             const isActive = weekNum === state.week;
             btn.className = `flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-200 scale-105' : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'}`;
             
-            if (isActive) {
-                btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
+if (isActive) {
+    // 🔥 세로 스크롤 간섭을 막기 위해 가로 스크롤만 이동하도록 변경
+    const scroller = document.getElementById('week-scroller');
+    scroller.scrollTo({
+        left: btn.offsetLeft - scroller.offsetWidth / 2 + btn.offsetWidth / 2,
+        behavior: 'smooth'
+    });
+}
         });
     }
     
@@ -789,11 +794,20 @@
         const custom = state.customs[tplId] || {};
         renderSetRow(c, tplId, c.children.length + 1, {w:'', r:''}, custom.unit === 'lbs');
     }
-    function removeSet(btn, tplId) {
-        btn.parentElement.remove();
-        saveRecord(tplId);
-        render();
-    }
+function removeSet(btn, tplId) {
+    btn.parentElement.remove();
+    saveRecord(tplId);
+    
+    // 🔥 세트 삭제 시에도 스크롤 튕김 방지
+    const mainContent = document.getElementById('main-content');
+    const scrollPos = mainContent.scrollTop;
+    
+    render();
+    
+    requestAnimationFrame(() => {
+        mainContent.scrollTop = scrollPos;
+    });
+}
     function saveRecord(tplId) {
         const rows = document.getElementById(`sets-${tplId}`).children;
         const sets = [];
@@ -844,17 +858,28 @@
         setTimeout(() => modalEl.classList.add('invisible'), 300);
         editingId = null;
     }
-    function saveCustomization() {
-        if(!editingId) return;
-        const name = document.getElementById('custom-name-input').value;
-        const note = document.getElementById('custom-note-input').value;
-        const unit = document.querySelector('input[name="custom-unit"]:checked').value;
-        if(name || note || unit !== 'kg') state.customs[editingId] = { name, note, unit };
-        else delete state.customs[editingId];
-        saveData();
-        render();
-        closeModal();
-    }
+function saveCustomization() {
+    if(!editingId) return;
+    const name = document.getElementById('custom-name-input').value;
+    const note = document.getElementById('custom-note-input').value;
+    const unit = document.querySelector('input[name="custom-unit"]:checked').value;
+    if(name || note || unit !== 'kg') state.customs[editingId] = { name, note, unit };
+    else delete state.customs[editingId];
+    saveData();
+    
+    // 🔥 스크롤 위치 저장
+    const mainContent = document.getElementById('main-content');
+    const scrollPos = mainContent.scrollTop; 
+    
+    render();
+    
+    // 🔥 DOM 업데이트 후 스크롤 위치 복원
+    requestAnimationFrame(() => {
+        mainContent.scrollTop = scrollPos;
+    });
+    
+    closeModal();
+}
     function openHistory(id) {
         const records = state.records[id] || [];
         const content = document.getElementById('history-content');
