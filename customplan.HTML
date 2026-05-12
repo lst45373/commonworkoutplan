@@ -790,15 +790,15 @@ let lastScrolledWeek = null; // 스크롤 상태를 기억하는 변수 추가
         });
     }
 
-    function renderSetRow(container, tplId, idx, data, isLbs) {
+ function renderSetRow(container, tplId, idx, data, isLbs) {
         const div = document.createElement('div');
         div.className = "flex items-center gap-2 animate-[fadeIn_0.2s]";
         const placeholderUnit = isLbs ? 'lbs' : 'kg';
         
         div.innerHTML = `
             <span class="text-[10px] font-bold text-slate-300 w-6 text-center">SET ${idx}</span>
-            <input type="number" value="${data.w}" placeholder="${placeholderUnit}" class="w-16 p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm input-w" onchange="saveRecord('${tplId}')">
-            <input type="number" value="${data.r}" placeholder="회" class="flex-grow p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm input-r" onchange="saveRecord('${tplId}')" onblur="checkTimer('${tplId}', this)">
+            <input type="number" value="${data.w}" placeholder="${placeholderUnit}" class="w-16 p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm input-w" oninput="saveRecord('${tplId}')">
+            <input type="number" value="${data.r}" placeholder="회" class="flex-grow p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm input-r" oninput="saveRecord('${tplId}')" onblur="checkTimer('${tplId}', this)">
             <button onclick="removeSet(this, '${tplId}')" class="p-2 text-slate-300 hover:text-red-400"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         `;
         container.appendChild(div);
