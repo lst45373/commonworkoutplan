@@ -604,11 +604,10 @@
 // Sub/Finish Logic
         const sortedHistory = [...validHistory].sort((a,b) => new Date(a.date) - new Date(b.date));
         const lastRec = sortedHistory[sortedHistory.length-1];
-        const lastSet = lastRec ? lastRec.sets[lastRec.sets.length-1] : null;
 
         if (phase === "디로딩") {
+            const lastSet = lastRec ? lastRec.sets[lastRec.sets.length-1] : null;
             if (lastSet && Number(lastSet.w) > 0) {
-                // 과거 기록의 50% 무게를 계산 (2.5kg 단위로 반올림)
                 const halfW = isLbs ? Math.round((Number(lastSet.w) * 0.5) / 5) * 5 : Math.round((Number(lastSet.w) * 0.5) / 2.5) * 2.5;
                 return `🌿 디로딩 목표: ${halfW}${unitText} x ${targetReps} (1~2세트)`;
             }
@@ -620,23 +619,62 @@
             return `🔥 목표: ${startW}${unitText} x ${targetReps} (${targetSets})`;
         }
         
-        const baseVal = isLbs ? tpl.progression.base * 2.2 : tpl.progression.base;
-        
-        // 1. 타겟 횟수에서 최대 횟수를 동적으로 파싱 (예: "15-20회" -> 20, "12회" -> 12)
-        let maxTargetReps = 12; // 기본값
-        const repsMatch = targetReps.match(/(\d+)\s*(?:-|~)?\s*(\d+)?/);
-        if (repsMatch) {
-            maxTargetReps = parseInt(repsMatch[2] || repsMatch[1]);
+        if (lastRec && lastRec.sets.length > 0) {
+            // 1. 실제 수행한 총 볼륨(Actual Volume) 및 최고(B)/최소(A) 중량 추출
+            let actualVolume = 0;
+            let maxW = 0;
+            let minW = Infinity; // 최소 중량을 찾기 위해 무한대로 초기화
+
+            lastRec.sets.forEach(s => {
+                const w = Number(s.w) || 0;
+                const r = Number(s.r) || 0;
+                if (w > 0 && r > 0) { // 유효한 세트만 계산
+                    actualVolume += (w * r);
+                    if (w > maxW) maxW = w;
+                    if (w < minW) minW = w;
+                }
+            });
+            
+            // 만약 유효한 세트가 없었다면 예외 처리
+            if (minW === Infinity) minW = 0;
+
+            // 2. 타겟 횟수(C-D) 파싱
+            let minR = 12, maxR = 15;
+            const repsMatch = targetReps.match(/(\d+)\s*(?:-|~)?\s*(\d+)?/);
+            if (repsMatch) {
+                minR = parseInt(repsMatch[1]);
+                maxR = parseInt(repsMatch[2] || repsMatch[1]);
+            }
+
+            // 3. 타겟 세트(E-F) 파싱
+            let minS = 3, maxS = 4;
+            const setsMatch = targetSets.match(/(\d+)\s*(?:-|~)?\s*(\d+)?/);
+            if (setsMatch) {
+                minS = parseInt(setsMatch[1]);
+                maxS = parseInt(setsMatch[2] || setsMatch[1]);
+            }
+
+            // 4. 회원님의 완벽한 볼륨 임계값 공식 적용
+            const minTargetVolume = minW * minR * minS; // A(최소중량) x C(최소횟수) x E(최소세트)
+            const maxTargetVolume = maxW * maxR * maxS; // B(최고중량) x D(최대횟수) x F(최대세트)
+            const inc = isLbs ? 5 : 2.5;
+
+            // 5. 조건에 따른 증/감/유지 판별 로직
+            if (actualVolume < minTargetVolume) {
+                // 수행 볼륨이 A x C x E 보다 작으면 감량 (최고 중량 기준에서 한 단계 낮춤)
+                let nextW = maxW - inc;
+                if (nextW < 0) nextW = 0; 
+                return `🔽 감량 권장: ${nextW}${unitText} x ${targetReps} (${targetSets})`;
+            } else if (actualVolume >= maxTargetVolume) {
+                // 수행 볼륨이 B x D x F 를 넘거나 같으면 증량
+                const nextW = maxW + inc;
+                return `🔥 증량 도전: ${nextW}${unitText} x ${targetReps} (${targetSets})`;
+            } else {
+                // 그 사이 구간은 해당 최고 중량을 유지하며 볼륨 축적
+                return `🔥 유지 목표: ${maxW}${unitText} x ${targetReps} (${targetSets})`;
+            }
         }
 
-        // 2. 동적으로 파싱된 최대 횟수(maxTargetReps)를 증량 기준으로 사용
-        if (lastSet && Number(lastSet.r) >= maxTargetReps && Number(lastSet.w) >= baseVal) {
-            const inc = isLbs ? 5 : 2.5;
-            return `🔥 증량 도전: ${Number(lastSet.w) + inc}${unitText} x ${targetReps} (${targetSets})`;
-        }
-        if (lastSet) {
-             return `🔥 유지 목표: ${lastSet.w}${unitText} x ${targetReps} (${targetSets})`;
-        }
         return `🔥 목표: ${fmtW(tpl.progression.base)}${unitText} x ${targetReps} (${targetSets})`;
     }
 
