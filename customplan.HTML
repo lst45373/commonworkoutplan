@@ -914,40 +914,44 @@ function removeSet(btn, tplId) {
         editingId = null;
     }
 function saveCustomization() {
-        if(!editingId) return;
-        
-        // 🔥 1. 모바일 가상 키보드를 강제로 먼저 내립니다 (포커스 해제)
-        if (document.activeElement) {
-            document.activeElement.blur(); 
-        }
-
-        const name = document.getElementById('custom-name-input').value;
-        const note = document.getElementById('custom-note-input').value;
-        const unit = document.querySelector('input[name="custom-unit"]:checked').value;
-        if(name || note || unit !== 'kg') state.customs[editingId] = { name, note, unit };
-        else delete state.customs[editingId];
-        saveData();
-        
-        // 🔥 2. 스크롤되는 영역(main-content)의 스크롤 위치를 저장
-        const mainContent = document.getElementById('main-content');
-        const scrollPos = mainContent.scrollTop;
-        
-        // 설정 저장 시 카드가 아래에서 위로 올라오는 애니메이션이 켜져있으면
-        // 화면이 흔들릴 수 있으므로 애니메이션을 끄고 렌더링합니다. (이미 이 변수가 선언되어 있다면)
-        isFullRender = false; 
-        render();
-        
-        // 🔥 3. 가상 키보드가 닫히는 애니메이션 시간을 고려하여 다중으로 스크롤 복구
-        const restoreScroll = () => {
-            if(mainContent) mainContent.scrollTop = scrollPos;
-        };
-        
-        restoreScroll();            // 즉시 복구 시도
-        setTimeout(restoreScroll, 50);  // 키보드가 내려가기 시작할 때 쯤 다시 복구
-        setTimeout(restoreScroll, 300); // 키보드가 완전히 닫힌 후 최종적으로 자리잡게 복구
-        
-        closeModal();
+    if(!editingId) return;
+    
+    // 1. 모바일 가상 키보드 닫기 (포커스 해제)
+    if (document.activeElement) {
+        document.activeElement.blur(); 
     }
+
+    const name = document.getElementById('custom-name-input').value;
+    const note = document.getElementById('custom-note-input').value;
+    const unit = document.querySelector('input[name="custom-unit"]:checked').value;
+    if(name || note || unit !== 'kg') state.customs[editingId] = { name, note, unit };
+    else delete state.customs[editingId];
+    saveData();
+    
+    // 2. DOM이 다시 그려질 때 컨테이너 높이가 0이 되어 스크롤이 튕기는 것 방지
+    const listEl = document.getElementById('exercise-list');
+    const currentHeight = listEl.offsetHeight; 
+    listEl.style.minHeight = currentHeight + 'px'; // 현재 높이 강제 고정
+    
+    const mainContent = document.getElementById('main-content');
+    const scrollPos = mainContent.scrollTop;
+    
+    render(); // 화면 새로고침
+    
+    // 3. 스크롤 복구 및 고정해둔 높이 원상복구
+    const restoreScroll = () => {
+        if(mainContent) mainContent.scrollTop = scrollPos;
+    };
+    
+    restoreScroll();
+    setTimeout(restoreScroll, 50);
+    setTimeout(() => {
+        restoreScroll();
+        listEl.style.minHeight = ''; // 약 0.3초 뒤(키보드 닫힘 및 렌더링 완료) 높이 고정 해제
+    }, 300);
+    
+    closeModal();
+}
     function openHistory(id) {
         const records = state.records[id] || [];
         const content = document.getElementById('history-content');
